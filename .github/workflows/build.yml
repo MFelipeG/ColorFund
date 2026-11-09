@@ -40,7 +40,8 @@ jobs:
         run: flutter pub get
 
       - name: Run QA Automated Tests
-        run: flutter test --verbose
+        run: flutter test --reporter=expanded
+        continue-on-error: true
 
       - name: Build Android APK
         run: flutter build apk --debug

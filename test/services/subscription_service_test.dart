@@ -2,6 +2,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:color_fund/services/subscription_service.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   group('SubscriptionService Business Rules QA Tests', () {
     late SubscriptionService service;
 
@@ -103,4 +105,3 @@ void main() {
     });
   });
 }
-

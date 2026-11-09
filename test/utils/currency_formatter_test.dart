@@ -2,6 +2,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:color_fund/core/utils/currency_formatter.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   group('CurrencyFormatter i18n QA Tests', () {
     test('Formats BRL correctly with symbol and decimals', () {
       final formatted = CurrencyFormatter.format(
