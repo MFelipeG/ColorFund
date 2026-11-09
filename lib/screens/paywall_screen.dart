@@ -277,3 +277,4 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
     );
   }
 }
+

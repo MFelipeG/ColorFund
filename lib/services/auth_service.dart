@@ -99,3 +99,4 @@ final currentUserProvider = Provider<User?>((ref) {
   final authState = ref.watch(authStateProvider);
   return authState.value;
 });
+

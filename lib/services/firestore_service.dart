@@ -83,3 +83,4 @@ final userGoalsStreamProvider = StreamProvider<List<GoalModel>>((ref) {
   final firestore = ref.watch(firestoreServiceProvider);
   return firestore.watchGoals(user.uid);
 });
+

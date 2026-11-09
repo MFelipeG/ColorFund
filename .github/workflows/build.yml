@@ -29,17 +29,23 @@ jobs:
           channel: 'stable'
           cache: true
 
+      - name: Prepare Android Platform & Assets
+        run: |
+          cp .env.example .env
+          flutter create . --platforms=android --org com.colorfund.app
+          mkdir -p assets/images assets/layouts
+
       - name: Install Dependencies
         run: flutter pub get
 
       - name: Run QA Automated Tests
-        run: flutter test
+        run: flutter test --no-pub
 
-      - name: Build APK (Release)
-        run: flutter build apk --split-per-abi
+      - name: Build Android APK
+        run: flutter build apk --debug
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: app-release-apks
+          name: ColorFund-debug-apk
           path: build/app/outputs/flutter-apk/*.apk

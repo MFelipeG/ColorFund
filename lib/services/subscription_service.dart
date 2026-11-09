@@ -26,14 +26,20 @@ enum GoalLayoutTheme {
 
 /// Core domain service enforcing Freemium barriers, quota limits, and premium feature gates.
 class SubscriptionService {
-  final FirebaseFirestore _firestore;
-  final FirebaseAuth _auth;
+  final FirebaseFirestore? _firestore;
+  final FirebaseAuth? _auth;
 
   SubscriptionService({
     FirebaseFirestore? firestore,
     FirebaseAuth? auth,
-  })  : _firestore = firestore ?? FirebaseFirestore.instance,
-        _auth = auth ?? FirebaseAuth.instance;
+  })  : _firestore = firestore,
+        _auth = auth;
+
+  FirebaseFirestore get _resolvedFirestore =>
+      _firestore ?? FirebaseFirestore.instance;
+
+  FirebaseAuth get _resolvedAuth =>
+      _auth ?? FirebaseAuth.instance;
 
   /// Strict maximum active goals for free users
   static const int freeTierGoalLimit = 1;
@@ -71,19 +77,23 @@ class SubscriptionService {
 
   /// Real-time stream of the authenticated user's isPremium status directly from Firestore
   Stream<bool> watchUserPremiumStatus() {
-    final user = _auth.currentUser;
-    if (user == null) {
+    try {
+      final user = _resolvedAuth.currentUser;
+      if (user == null) {
+        return Stream.value(false);
+      }
+
+      return _resolvedFirestore
+          .collection('users')
+          .doc(user.uid)
+          .snapshots()
+          .map((snapshot) {
+        if (!snapshot.exists || snapshot.data() == null) return false;
+        return (snapshot.data()?['isPremium'] as bool?) ?? false;
+      }).handleError((_) => false);
+    } catch (_) {
       return Stream.value(false);
     }
-
-    return _firestore
-        .collection('users')
-        .doc(user.uid)
-        .snapshots()
-        .map((snapshot) {
-      if (!snapshot.exists || snapshot.data() == null) return false;
-      return (snapshot.data()?['isPremium'] as bool?) ?? false;
-    }).handleError((_) => false);
   }
 }
 
@@ -101,4 +111,3 @@ final isPremiumProvider = Provider<bool>((ref) {
   final asyncValue = ref.watch(isPremiumStreamProvider);
   return asyncValue.value ?? false;
 });
-
