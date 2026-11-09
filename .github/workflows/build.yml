@@ -1,4 +1,4 @@
-name: Build Android APK
+name: Build Android APK & QA Tests
 
 on:
   push:
@@ -8,8 +8,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
-    name: Build Flutter APK
+  test_and_build:
+    name: QA Tests & Build Flutter APK
     runs-on: ubuntu-latest
 
     steps:
@@ -29,8 +29,11 @@ jobs:
           channel: 'stable'
           cache: true
 
-      - name: Get Dependencies
+      - name: Install Dependencies
         run: flutter pub get
+
+      - name: Run QA Automated Tests
+        run: flutter test
 
       - name: Build APK (Release)
         run: flutter build apk --split-per-abi
@@ -40,4 +43,3 @@ jobs:
         with:
           name: app-release-apks
           path: build/app/outputs/flutter-apk/*.apk
-
