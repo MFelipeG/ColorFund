@@ -1,0 +1,195 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users/{userId}
+    // Document ID: userId (matches Firebase Auth UID)
+    // Fields:
+    //   - email: string (required, valid email, max 254 chars)
+    //   - isPremium: bool (optional on create, default false; strictly read-only by client, managed via Admin SDK/Stripe)
+    //   - createdAt: timestamp (required, immutable)
+    //   - updatedAt: timestamp (required)
+    //
+    // Subcollection: users/{userId}/goals/{goalId}
+    // Document ID: goalId (string matching document 'id' field)
+    // Fields:
+    //   - id: string (required, 1-128 chars, matches goalId, immutable)
+    //   - title: string (required, 1-100 chars)
+    //   - targetAmount: number (required, positive: > 0, max 1,000,000,000,000)
+    //   - savedAmount: number (required, non-negative: >= 0, max 1,000,000,000,000)
+    //   - currency: string (required, 3-10 chars, e.g. 'BRL', 'USD', 'EUR')
+    //   - layoutId: string (required, 1-50 chars, e.g. 'layout_jar_01')
+    //   - isCompleted: bool (required)
+    //   - createdAt: timestamp (required, immutable)
+    //   - updatedAt: timestamp (required)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    // Check if request is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Check if authenticated user is the owner of the document path
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Verify that all required fields exist in the resource data
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    // Verify that only allowed fields exist in the resource data (strict schema enforcement)
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    // Verify that specified immutable fields remain unchanged during an update
+    function areImmutableFieldsUnchanged(fields) {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(fields);
+    }
+
+    // Validate email format and bounded length
+    function isValidEmail(email) {
+      return email is string &&
+             email.size() >= 3 &&
+             email.size() <= 254 &&
+             email.matches('^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$');
+    }
+
+    // Validate that a timestamp is recent (within 5 minutes of request.time) and not in the future
+    function isRecent(time) {
+      return time is timestamp &&
+             time > request.time - duration.value(5, 'm') &&
+             time <= request.time;
+    }
+
+    // Enforce that client cannot set or alter 'isPremium'
+    // - On create: isPremium must not be present, or must be false
+    // - On update: if isPremium exists, client cannot modify or remove it; if not present, client cannot set it to true
+    function isPremiumNotTampered() {
+      return ('isPremium' in resource.data)
+        ? (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['isPremium']))
+        : (!('isPremium' in request.resource.data) || request.resource.data.isPremium == false);
+    }
+
+    // ===============================================================
+    // Domain Validators (Applied to both create and update)
+    // ===============================================================
+
+    // Validate user profile schema and boundaries
+    function isValidUser(data) {
+      return hasOnlyAllowedFields(['email', 'isPremium', 'createdAt', 'updatedAt']) &&
+             hasRequiredFields(['email', 'createdAt', 'updatedAt']) &&
+             data.email is string &&
+             isValidEmail(data.email) &&
+             (!('isPremium' in data) || data.isPremium is bool) &&
+             data.createdAt is timestamp &&
+             data.updatedAt is timestamp;
+    }
+
+    // Validate financial goal schema and boundaries
+    function isValidGoal(goalId, data) {
+      return hasOnlyAllowedFields([
+               'id', 'title', 'targetAmount', 'savedAmount',
+               'currency', 'layoutId', 'isCompleted',
+               'createdAt', 'updatedAt'
+             ]) &&
+             hasRequiredFields([
+               'id', 'title', 'targetAmount', 'savedAmount',
+               'currency', 'layoutId', 'isCompleted',
+               'createdAt', 'updatedAt'
+             ]) &&
+             data.id is string &&
+             data.id == goalId &&
+             data.id.size() >= 1 &&
+             data.id.size() <= 128 &&
+             data.title is string &&
+             data.title.size() >= 1 &&
+             data.title.size() <= 100 &&
+             data.targetAmount is number &&
+             data.targetAmount > 0 &&
+             data.targetAmount <= 1000000000000 &&
+             data.savedAmount is number &&
+             data.savedAmount >= 0 &&
+             data.savedAmount <= 1000000000000 &&
+             data.currency is string &&
+             data.currency.size() >= 3 &&
+             data.currency.size() <= 10 &&
+             data.layoutId is string &&
+             data.layoutId.size() >= 1 &&
+             data.layoutId.size() <= 50 &&
+             data.layoutId.matches('^[a-zA-Z0-9_.-]+$') &&
+             data.isCompleted is bool &&
+             data.createdAt is timestamp &&
+             data.updatedAt is timestamp;
+    }
+
+    // ===============================================================
+    // Security Rules
+    // ===============================================================
+
+    // Default deny for all paths
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // -------------------------------------------------------------
+    // Users Collection
+    // -------------------------------------------------------------
+    match /users/{userId} {
+      // Only the authenticated owner can read their user document (PII protection)
+      allow read: if isOwner(userId);
+
+      // Owner can create their user document; client cannot set isPremium to true
+      allow create: if isOwner(userId) &&
+                       isValidUser(request.resource.data) &&
+                       isRecent(request.resource.data.createdAt) &&
+                       isRecent(request.resource.data.updatedAt) &&
+                       (!('isPremium' in request.resource.data) || request.resource.data.isPremium == false);
+
+      // Owner can update their user document; createdAt is immutable; isPremium cannot be altered
+      allow update: if isOwner(userId) &&
+                       isValidUser(request.resource.data) &&
+                       isRecent(request.resource.data.updatedAt) &&
+                       areImmutableFieldsUnchanged(['createdAt']) &&
+                       isPremiumNotTampered();
+
+      // Owner can delete their own profile document
+      allow delete: if isOwner(userId);
+
+      // -----------------------------------------------------------
+      // Goals Subcollection
+      // -----------------------------------------------------------
+      match /goals/{goalId} {
+        // Owner can read (get & list) their own financial goals
+        allow read: if isOwner(userId);
+
+        // Owner can create new financial goals
+        allow create: if isOwner(userId) &&
+                         isValidGoal(goalId, request.resource.data) &&
+                         isRecent(request.resource.data.createdAt) &&
+                         isRecent(request.resource.data.updatedAt);
+
+        // Owner can update goals; id and createdAt are immutable
+        allow update: if isOwner(userId) &&
+                         isValidGoal(goalId, request.resource.data) &&
+                         isRecent(request.resource.data.updatedAt) &&
+                         areImmutableFieldsUnchanged(['id', 'createdAt']);
+
+        // Owner can delete their own financial goals
+        allow delete: if isOwner(userId);
+      }
+    }
+  }
+}
