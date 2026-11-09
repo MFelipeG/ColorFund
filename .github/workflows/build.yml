@@ -31,8 +31,8 @@ jobs:
 
       - name: Prepare Android Platform & Assets
         run: |
-          cp .env.example .env
-          flutter create . --platforms=android --org com.colorfund.app
+          cp -n .env.example .env || true
+          flutter create . --project-name color_fund --platforms=android --org com.colorfund.app --overwrite
           mkdir -p assets/images assets/layouts
 
       - name: Install Dependencies
