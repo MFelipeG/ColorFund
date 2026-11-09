@@ -248,3 +248,4 @@ class _DepositButton extends StatelessWidget {
     );
   }
 }
+

@@ -101,3 +101,4 @@ final isPremiumProvider = Provider<bool>((ref) {
   final asyncValue = ref.watch(isPremiumStreamProvider);
   return asyncValue.value ?? false;
 });
+

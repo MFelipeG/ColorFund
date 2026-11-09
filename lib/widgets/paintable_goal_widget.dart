@@ -293,3 +293,4 @@ class _LiquidFillPainter extends CustomPainter {
         oldDelegate.gradientColors != gradientColors;
   }
 }
+

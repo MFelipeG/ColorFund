@@ -141,3 +141,4 @@ class GoalModel {
         isCompleted.hashCode;
   }
 }
+
