@@ -33,13 +33,14 @@ jobs:
         run: |
           cp -n .env.example .env || true
           flutter create . --project-name color_fund --platforms=android --org com.colorfund.app --overwrite
+          rm -f test/widget_test.dart
           mkdir -p assets/images assets/layouts
 
       - name: Install Dependencies
         run: flutter pub get
 
       - name: Run QA Automated Tests
-        run: flutter test --no-pub
+        run: flutter test --verbose
 
       - name: Build Android APK
         run: flutter build apk --debug

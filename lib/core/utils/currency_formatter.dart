@@ -21,8 +21,12 @@ class CurrencyFormatter {
       );
       return format.format(amount);
     } catch (_) {
-      // Fallback formatting
-      return '${_getSymbol(currencyCode)} ${amount.toStringAsFixed(2)}';
+      // Robust fallback formatting
+      final isEuroOrReal = currencyCode.toUpperCase() == 'BRL' || currencyCode.toUpperCase() == 'EUR';
+      final formattedNumber = isEuroOrReal
+          ? amount.toStringAsFixed(2).replaceAll('.', ',')
+          : amount.toStringAsFixed(2);
+      return '${_getSymbol(currencyCode)} $formattedNumber';
     }
   }
 
@@ -67,4 +71,3 @@ class CurrencyFormatter {
     }
   }
 }
-
