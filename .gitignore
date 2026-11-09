@@ -1,0 +1,57 @@
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.buildlog/
+.history
+.svn/
+migrate_working_dir/
+
+# IntelliJ related
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# Visual Studio Code related
+.vscode/
+
+# Flutter/Dart/Pub related
+**/doc/api/
+**/ios/Flutter/.last_build_id
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+/build/
+
+# Web related
+lib/generated_plugin_registrant.dart
+
+# Symbol processing related
+undecorated_symbol_table
+
+# Obfuscation related
+app.*.symbols
+
+# Android Studio will create this folder
+.gradle/
+**/android/app/debug/
+**/android/app/profile/
+**/android/app/release/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Local keystore / credentials
+*.keystore
+*.jks
+google-services.json
+GoogleService-Info.plist
